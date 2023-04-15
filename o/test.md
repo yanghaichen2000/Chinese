@@ -29,33 +29,69 @@
 
 ### 介绍一下渲染管线越详细越好
 
+![gpu_pipeline_0](gpu_pipeline_0.jpg)
+
 ![image-20221114111450877](gpu_pipeline.png)
 
-RTR4 P43
+(RTR4 P43)
 
-##### vertex shader
+![image-20230415174932410](gpu_pipeline_2.png)
+
+(上帝视角看GPU)
+
+![gpu_pipeline_3](D:\download\Chinese-main\Chinese-main\o\gpu_pipeline_3.png)
+
+(上帝视角看GPU)
+
+#### input assembler
+
+根据输入的顶点属性数据（buffer）获取各个顶点的坐标、法线、UV等信息
+
+#### vertex shader
 
 主要对输入顶点的属性进行一些操作。在这一部分可以将模型投影到裁剪空间（homogeneous clip space，透视投影之后透视除法之前的坐标空间）。vertex shader输出顶点的坐标、法线、纹理坐标等。蒙皮动画和基于高度图的地形系统也是在这一部分实现。
 
-##### tessellation
+#### primitive assembler
+
+根据顶点数据以及各个三角形的顶点索引组装三角形
+
+#### tessellation
 
 曲面细分
 
-##### geometry shader
+#### geometry shader
 
 复制物体
 
 创建cascaded shadow map
 
-##### pixel shader
+#### rasterizer
 
-逐像素处理，根据重心坐标对属性进行插值
+光栅化，根据重心坐标对属性进行插值
+
+##### 透视矫正插值
+
+opengl中默认使用。经过透视投影的顶点，其深度经过非线性变化，不能直接使用屏幕空间中求得的重心坐标对顶点的属性（如纹理坐标等）进行差值，而是采用透视矫正插值：
+$$
+f=\frac{af_a/w_a+bf_b/w_b+cf_c/w_c}{a/w_a+b/w_b+c/w_c}
+$$
+这里的 $f$ 是顶点属性，$w$ 是顶点经过MVP矩阵后的 $w$ 值，也是顶点经过MV矩阵后，P矩阵前的 $z$ 值，原因如下：
+
+<img src="perspective_projection.png" alt="perspective_projection" style="zoom: 80%;" />
+
+而顶点的深度值由于已经进行过 $1/w$ 的操作，所以直接用屏幕空间的重心坐标进行插值即可
+
+#### pixel shader
+
+逐像素处理
 
 shading在这一部分进行，最终得到每个像素的颜色
 
 
 
 ### 介绍一下SSAO
+
+#### SSAO
 
 SSAO就是屏幕空间的环境光遮蔽，是一个近似计算全局光照的方法。
 
@@ -65,13 +101,15 @@ SSAO则是仅利用屏幕空间信息来计算环境光遮蔽，主要依靠的�
 
 前面的AO方法并没有考虑到光的多次弹射，但是也可以用一些方法来近似计算。假设shading point周围区域的颜色都和shading point相同，那么就能得到周围区域所贡献的间接光照。
 
+#### SSDO
+
 关于SSDO，它采用的方法和SSAO有一定的相同之处，都是在上半球内进行采样，只不过SSDO是计算上半球内各个采样点对shading point的间接光照贡献。
 
 
 
 ### 介绍一下抗锯齿有哪些方法
 
-##### SSAA
+#### SSAA
 
 每个像素中取多个子采样点进行着色，然后将它们的着色结果进行混合。
 
@@ -79,7 +117,7 @@ SSAO则是仅利用屏幕空间信息来计算环境光遮蔽，主要依靠的�
 
 计算量非常大。
 
-##### MSAA
+#### MSAA
 
 同样每个像素包含数个子采样点，但是同一个像素对应的子采样点并不会独立进行shading，只是记录它所属的像素的颜色和深度信息。
 
@@ -87,9 +125,9 @@ GPU内置有MSAA算法。
 
 只能消除几何走样，对着色走样无效果。
 
-不容易用于延迟渲染，因为使用延迟渲染的时候场景会直接被光栅化到g-buffer，如果在这一步骤直接套用MSAA，会混合g-buffer信息而不是shading的结果。另外，MSAA会大量消耗内存和带宽，延迟渲染需要存很大的g-buffer，如果再使用MSAA，会有更大的性能压力。
+不容易用于延迟渲染，因为使用延迟渲染的时候场景会直接被光栅化到g-buffer，如果在这一步骤直接套用MSAA，会混合g-buffer信息而不是shading的结果，这样混合并不完全正确。另外，MSAA会大量消耗内存和带宽，延迟渲染需要存很大的g-buffer，如果再使用MSAA，会有更大的性能压力。
 
-##### FXAA
+#### FXAA
 
 一个基于后处理的方法。计算亮度来找到边界，然后进行混合 。
 
@@ -97,7 +135,7 @@ GPU内置有MSAA算法。
 
 画面会略有模糊，而且因为是完全基于图像，没有任何的次像素信息，所以在颜色变化较大的部分会比较不稳定。
 
-##### TAA
+#### TAA
 
 [主流抗锯齿方案详解（二）TAA - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/425233743)
 
@@ -107,7 +145,7 @@ GPU内置有MSAA算法。
 
 没有办法用于透明物体，动态场景会出现模糊，且有额外的内存开销。
 
-##### DLSS
+#### DLSS
 
 后处理方法，基于recurrent CNN，效果好，开销大。
 
@@ -115,11 +153,11 @@ GPU内置有MSAA算法。
 
 ### 实时渲染的阴影算法
 
-##### PCF
+#### PCF
 
 主要思路为对visibility进行滤波。对每个shading point，找到它在深度图上的对应位置，在该位置周围进行采样，与shading point的深度进行比较，然后将比较结果取加权平均得到滤波后的visibility。
 
-##### VSSM
+#### VSSM
 
 Variance soft shadow map。如果直接使用PCF，那么需要在深度图上进行采样，计算量较大。VSSM则用高斯分布来描述深度图上某个区域的深度分布。
 
@@ -129,17 +167,75 @@ Variance soft shadow map。如果直接使用PCF，那么需要在深度图上�
 
 当已经知道shading point的深度和其领域深度的均值和方差时，计算visibility的方法：可以通过高斯分布的累积分布函数（近似计算或查表），也可以套用切比雪夫不等式。
 
-
-
-##### 关于Bias
+#### 关于Bias
 
 Normal Bias：在左乘变换矩阵变换到对应tile之前，将shading point沿着法线向外移动一段距离，这个距离取决于该shadow map的文素大小（？确认以及为什么？）
 
-##### CSM
+#### CSM
 
 ...
 
-### 介绍一下PBR材质
+### PBR材质
 
+以UE4为例
 
+用漫反射模型和微表面模型描述材质。对于金属材质，其颜色为微表面模型的菲涅尔系数；对于非金属材质，用微表面模型描述其反射部分，用漫反射模型描述漫射部分。
+
+漫反射模型：
+
+<img src="ue4_pbr_diffuse.png" alt="ue4_pbr_diffuse" style="zoom:67%;" />
+
+微表面模型：
+
+<img src="ue4_pbr_microfacet.png" alt="ue4_pbr_microfacet" style="zoom:67%;" />
+
+其中 $D$ 项
+
+<img src="ue4_pbr_microfacet_D.png" alt="ue4_pbr_microfacet_D" style="zoom:67%;" />
+
+是表面法线分布函数，其中 $\alpha=Roughness^2$。
+
+$G$ 项
+
+<img src="ue4_pbr_microfacet_G.png" alt="ue4_pbr_microfacet_G" style="zoom:67%;" />
+
+用于描述表面的几何遮挡。这一项只在光源产生的光照中计算，不用在IBL中，否则会导致计算结果偏暗（为什么一般光源就不会变暗？吗？）
+
+$F$ 项
+
+<img src="ue4_pbr_microfacet_F.png" alt="ue4_pbr_microfacet_F" style="zoom:67%;" />
+
+对于金属他就是表面的base_color，对于非金属它的值约为0.04
+
+#### PBR材质的重要性采样
+
+采样分布与被积函数相关性越大，收敛速度越快。假设 $L_i$ 均匀分布，此时渲染方程的被积函数主要受到发现分布的影响，所以可以利用NDF进行重要性采样。
+
+方法为根据NDF随机生成 $\mathbf h$ 向量，然后根据 $\mathbf v$ 计算出 $\mathbf l$，如果 $\mathbf l$ 和法线同向则接受该采样，若不同向则该次采样结果为 $0$
+
+#### IBL
+
+首先使用split sum将光源和brdf项拆开
+
+<img src="ue4_pbr_split_sum.png" alt="ue4_pbr_split_sum" style="zoom:67%;" />
+
+首先对于光源项，如果假设不论 $\mathbf v$ 是什么方向，它所对应的 $\mathbf r$ 的分布都不会变且和垂直入射的情况相同（即$\mathbf v=\mathbf r=\mathbf n$），那么就可以在环境纹理上预计算光源项。预计算的方法就是重要性采样 $\mathbf h$，然后查找其反射光在环境纹理上的值进行平均。这里使用cos-weighted加权平均效果更好。
+
+然后对于brdf项，如果将其中的菲涅尔项拆开，则分别都可以表示为roughness和cos项的函数：
+
+<img src="ue4_pbr_brdf_lut.png" alt="ue4_pbr_brdf_lut" style="zoom:67%;" />
+
+于是可以预计算为一个查找表。
+
+### 法线贴图
+
+法线贴图中存储了切线空间中的法线方向。由于法线方向的z分量存储在蓝色通道中，所以它的值基本在 $(0,0,1)$ 左右，使得法线贴图往往看起来偏蓝
+
+#### 如何建立切线空间
+
+根据三个顶点之间的纹理坐标差异计算切线 $t$ 和副切线 $b$：
+
+<img src="TBN.png" alt="TBN" style="zoom:80%;" />
+
+整个三角形使用相同的切线和副切线。在pixel shader中将他们与法线做正交化之后就能得到切线空间
 
