@@ -65,6 +65,20 @@
 
 创建cascaded shadow map
 
+#### clipping
+
+在其次裁剪空间中进行，也就是经过MVP矩阵之后，除以 $w$ 之前（此时可见区域还是一个锥体，除以 $w$ 之后才会变成立方体）。
+
+裁剪的主要作用：由于只有视锥体内部的内容需要渲染，所以将其外部的三角面剔除。另外，如果一个顶点处于摄像机之后，那么除以 $w$ 会导致该顶点的位置转换到摄像机前，与正确结果不符。
+
+<img src="D:\download\Chinese-main\Chinese-main\o\clipping.png" alt="clipping" style="zoom:50%;" />
+
+裁剪的过程：将三角形与视锥体的六个面逐个进行裁剪，且上一次裁剪的输出是下一次裁剪的输入。注意裁剪是在四维空间中进行而不是三维，而视锥体的六个面在四维空间中的表达式为：
+
+<img src="D:\download\Chinese-main\Chinese-main\o\clipping_plane.png" alt="clipping_plane" style="zoom:67%;" />
+
+推导过程见[计算机图形学补充2：齐次空间裁剪(Homogeneous Space Clipping) - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/162190576)
+
 #### rasterizer
 
 光栅化，根据重心坐标对属性进行插值
@@ -174,6 +188,20 @@ Normal Bias：在左乘变换矩阵变换到对应tile之前，将shading point�
 #### CSM
 
 ...
+
+
+
+### 重要性采样
+
+重要性采样是为了在同样采样次数的情况下使蒙特卡洛积分更快收敛，其收敛速度取决于采样分布和被积函数的相关性。由于渲染方程中被积函数未知，所以只能设计采样分布使其形状更接近被积函数。
+
+比较通用的重要性采样方法就是cos weighted采样，这个考虑的就是渲染方程里面的cos项。在预计算irradiance的时候可以使用这个。
+
+对于微表面模型，参照“PBR材质的重要性采样”。
+
+另外，由于直接光光源往往面积较小而且对shading结果贡献很大，可以对光源专门做重要性采样。主要方法就是把 $L_i$ 分为直接光和间接光，直接光就直接在各个光源上采样，这里需要把shading point单位半球面上的积分转换为在光源表面上的积分。
+
+
 
 ### PBR材质
 
