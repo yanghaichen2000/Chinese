@@ -167,6 +167,34 @@ GPU内置有MSAA算法。
 
 ### 实时渲染的阴影算法
 
+#### Shadow Bias
+
+[自适应Shadow Bias算法 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/370951892)
+
+##### Bias
+
+将shadow map的值增加一个固定值，是最原始的方法。对于实现该功能可以在渲染shadow map的时候设置深度偏移：
+
+```c#
+buffer.SetGlobalDepthBias(0f, light.slopeScaleBias)
+```
+
+如果表面与光线平行，需要使用的bias趋于无穷大。
+
+且值过大时容易产生漏光问题（回忆我的Cornell box）。
+
+##### Normal bias
+
+在应用shadow map时，将shading point顺法线方向移动一段距离。
+
+表面与光线趋于平行时，需要的bias也会增加，但是不会大于0.5 * 文素大小（二维）或 $\frac{\sqrt2}{2}$ * 文素大小（三维，考虑了对角线的最差情况）。
+
+同样也会产生漏光问题。
+
+##### Shadow Caster Vertex Based Bias（URP中的Normal Bias）
+
+在计算shadow map时， 将shadow caster的顶点向内移动一段距离。
+
 #### PCF
 
 主要思路为对visibility进行滤波。对每个shading point，找到它在深度图上的对应位置，在该位置周围进行采样，与shading point的深度进行比较，然后将比较结果取加权平均得到滤波后的visibility。
@@ -180,10 +208,6 @@ Variance soft shadow map。如果直接使用PCF，那么需要在深度图上�
 而任意区域的深度的均值和方差的计算方法为：提前生成两个SAT(summed area table)，其中分别存储深度的累计值和深度平方的累计值，这样就能很快速地计算出深度的均值和方差。
 
 当已经知道shading point的深度和其领域深度的均值和方差时，计算visibility的方法：可以通过高斯分布的累积分布函数（近似计算或查表），也可以套用切比雪夫不等式。
-
-#### 关于Bias
-
-Normal Bias：在左乘变换矩阵变换到对应tile之前，将shading point沿着法线向外移动一段距离，这个距离取决于该shadow map的文素大小（？确认以及为什么？）
 
 #### CSM
 
