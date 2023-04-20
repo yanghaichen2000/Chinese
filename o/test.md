@@ -39,7 +39,7 @@
 
 (上帝视角看GPU)
 
-![gpu_pipeline_3](D:\download\Chinese-main\Chinese-main\o\gpu_pipeline_3.png)
+![gpu_pipeline_3](gpu_pipeline_3.png)
 
 (上帝视角看GPU)
 
@@ -71,11 +71,11 @@
 
 裁剪的主要作用：由于只有视锥体内部的内容需要渲染，所以将其外部的三角面剔除。另外，如果一个顶点处于摄像机之后，那么除以 $w$ 会导致该顶点的位置转换到摄像机前，与正确结果不符。
 
-<img src="D:\download\Chinese-main\Chinese-main\o\clipping.png" alt="clipping" style="zoom:50%;" />
+<img src="clipping.png" alt="clipping" style="zoom:50%;" />
 
 裁剪的过程：将三角形与视锥体的六个面逐个进行裁剪，且上一次裁剪的输出是下一次裁剪的输入。注意裁剪是在四维空间中进行而不是三维，而视锥体的六个面在四维空间中的表达式为：
 
-<img src="D:\download\Chinese-main\Chinese-main\o\clipping_plane.png" alt="clipping_plane" style="zoom:67%;" />
+<img src="clipping_plane.png" alt="clipping_plane" style="zoom:67%;" />
 
 推导过程见[计算机图形学补充2：齐次空间裁剪(Homogeneous Space Clipping) - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/162190576)
 
